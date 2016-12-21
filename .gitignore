@@ -1,2 +1,5 @@
+#ugly hack, ignore all files but c files and pdf
+*
+
 !*.c
 !*.pdf
