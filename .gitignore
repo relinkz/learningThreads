@@ -1,2 +1,2 @@
-*.tga
-*.executable
+!*.c
+!*.jpg
