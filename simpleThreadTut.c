@@ -9,20 +9,24 @@
 void* inc_x(void* x_void_ptr)
 {
 	int* x_ptr = (int*)x_void_ptr;
-	
+	int toReturn = 42;
 	//increment x to 100
 	while(++(*x_ptr) < 100);
 
 	printf("x increment finished\n");
+
+	return (void*)toReturn;
 }
 
 int main()
 {
 	int x = 0;
 	int y = 0;
+	int returnVal = 0;
+	void* status;
 
 	//show the initial values of x and y
-	printf("x: %d, y: %d\n", x, y);
+	printf("x: %d, y: %d\n returnVal: %d\n", x, y, returnVal);
 
 	//this variable is our reference to the secound thread
 	pthread_t inc_x_thread;
@@ -39,14 +43,15 @@ int main()
 	printf("y increment finished\n");
 
 	//wait for secound thread to finish
-	if(pthread_join(inc_x_thread, NULL))
+	if(pthread_join(inc_x_thread, status))
 	{
 		fprintf(stderr, "Error joining thread\n");
 		return 2;
 	}
+	returnVal = *(int*)status;
 
 	//show the results - x is now 100 thanks to the secound thread
-	printf("x: %d, y: %d\n",x, y);
+	printf("x: %d, y: %d\n returnVal: %d\n", x, y, returnVal);
 
 	return 0;
 }

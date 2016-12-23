@@ -2,23 +2,13 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
+
+
 
 // draws a mandelbrot fractal
 // compile with gcc fractal.c -lm -std=c99 -o fractal
 
-unsigned int* pixmap;
-
-#define THREADS_NR 8
-
-//define the image here
-#define WIDTH 8
-#define HEIGHT 8
-
-//thread
-pthread_t pts[THREADS_NR];
-pthread_attr_t attr;
-
+static unsigned int* pixmap;
 
 int pal[256] = {
     0xb2000a,0xb20009,0xb2000a,0xb1000a,0xb1000b,0xaf000d,0xaf000e,0xae000f,0xad0011,0xac0012,0xab0013,0xaa0015,
@@ -44,87 +34,37 @@ int pal[256] = {
     0xf6ff,0xf7ff,0xf8ff,0xfaff,0xfbff,0xfcff,0xfcff,0xfcff,0xfcff,0xfcff,
     0xfcff,0xfcff,0xfcff,0xfcff,0xfcff,0xfcff,0xfcff,0xfcff,0xfcff};
 
-void* mandelTread(void* threadPacket)
+void* threadFunct(void* ptr)
 {
-	int i = 0;
+	int i = *(int*)ptr;
+	
 	int j = 0;
+	int ii = 0;
+
 	float xmin = -1.6f;
 	float xmax = 1.6f;
 	float ymin = -1.6f;
 	float ymax = 1.6f;
 
-	float width = (float)WIDTH;
-	float height = (float)HEIGHT;
-//
-//	//convert the thread packet to an integer
-//	i = *(int*)threadPacket;
-	int ii = 2;
-//
-//	for (j = 0; j < width; j++) 
-//		{
-//			float b = xmin + j * (xmax - xmin) / width;
-//			float a = ymin + i * (ymax - ymin) / height;
-//			float sx = 0.0f;
-//			float sy = 0.0f;
-//			
-//			
-//			while (sx + sy <= 64.0f) 
-//			{
-//				float xn = sx * sx - sy * sy + b;
-//				float yn = 2 * sx * sy + a;
-//				sx = xn;
-//				sy = yn;
-//				ii++;
-//				if (ii == 1500)
-//				{
-//					break;
-//				}
-//			}
-//		}
-//
-		threadPacket = (void*)&ii;
-		//is this even a legal statement??
-		return threadPacket;
-}
+	float width = 1024.0;
+	float height = 1024.0;
 
-
-void mandelbrot(float width, float height, unsigned int *pixmap)
-{
-	int i, j;
-	float xmin = -1.6f;
-	float xmax = 1.6f;
-	float ymin = -1.6f;
-	float ymax = 1.6f;
-
-	int threadPacket = 0;
-	int ii;
-
-	for (i = 0; i < height; i++) 
-	{	
-		//mandelThread execute
-		threadPacket = i;
-		//here lies the my theory of the problem
-		//the threadPacket variable holds the value that the threads save and operates on
-		//the values is shared and used witch results in segmentation faults,
-		//we need to make a matrix with datastorage dedicated for each thread to make this
-		//work
-		if(pthread_create(&pts[i], &attr, mandelTread, (void*)&threadPacket) != 0)
+	for (j = 0; j < width; j++) 
 		{
-			printf("Thread failed to create%d\n", i);
-			break;
-		}
-
-		
-		if(pthread_join(pts[i], NULL) != 0)
-		{
-			printf("Thread failed to join");
-			break;
-		}
-		//threadpacket should return ii with threadPacket
-		ii = *(int*)threadPacket;
-
-			//the thread will have to return a integer ii after thread execution
-			//here the data is written to the pixmap
+			float b = xmin + j * (xmax - xmin) / width;
+			float a = ymin + i * (ymax - ymin) / height;
+			float sx = 0.0f;
+			float sy = 0.0f;
+			int ii = 0;
+			
+			while (sx + sy <= 64.0f || ii != 1500) 
+			{
+				float xn = sx * sx - sy * sy + b;
+				float yn = 2 * sx * sy + a;
+				sx = xn;
+				sy = yn;
+				ii++;
+			}
 			if (ii == 1500)	
 			{
 				pixmap[j+i*(int)width] = 0;
@@ -134,10 +74,20 @@ void mandelbrot(float width, float height, unsigned int *pixmap)
 				int c = (int)((ii / 32.0f) * 256.0f);
 				pixmap[j + i *(int)width] = pal[c%256];
 			}
-			printf("pixmap value: %d\n", pixmap[j + i * (int)width]);
-	}
+		}
+
 }
 
+void mandelbrot(float width, float height, unsigned int *pixmap)
+{
+	int i, j;
+	pthread_t threads[1024];
+
+	for (i = 0; i < height; i++) 
+	{
+		pthread_create(&threads[i], NULL, threadFunct, &i);
+	}
+}
 
 void writetga(unsigned int *pixmap, unsigned int width, unsigned int height, char *name)
 {
@@ -171,13 +121,9 @@ int main(int a, char *args[])
 {
 	int i, j;
 	printf("fractal");
-	//initialize the treads with the default values described in
-	//attr.
-	pthread_attr_init(&attr);
-
-	pixmap = malloc(8*8*sizeof(int));
-	//mandelbrot(8.0f, 8.0f, pixmap);
-	writetga(pixmap, 8, 8, "fracout.tga");
+	pixmap = malloc(1024*1024*sizeof(int));
+	//mandelbrot(1024.0f, 1024.0f, pixmap);
+	writetga(pixmap, 1024, 1024, "fracout.tga");
 	free(pixmap);
 	return 0;
 }
